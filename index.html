@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NBA Hall of Fame | Conversations with Basketball Legends</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Inter:wght@400;500;600;700;800&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <div class="arena-lines" aria-hidden="true"></div>
+
+    <header class="hero">
+      <div class="hero-copy-wrap">
+        <div class="eyebrow">Basketball mentality archive</div>
+        <h1>NBA Hall of Fame</h1>
+        <p class="hero-copy">
+          Step into a digital arena where AI personas inspired by NBA legends talk about mindset,
+          growth, pressure, leadership, and the habits behind greatness.
+        </p>
+        <div class="hero-principles" aria-label="Basketball themes">
+          <span class="principle-pill">Mamba Mentality</span>
+          <span class="principle-pill">Championship Habits</span>
+          <span class="principle-pill">Court IQ</span>
+        </div>
+        <div class="hero-actions">
+          <a class="hero-button primary" href="#featured-chat">Start a Conversation</a>
+          <a class="hero-button secondary" href="#persona-hub">Browse Legends</a>
+        </div>
+      </div>
+
+      <div class="hero-visual" aria-label="Basketball arena">
+        <div class="hero-photo"></div>
+        <div class="scoreboard">
+          <span>Live Mode</span>
+          <strong>6 Legends</strong>
+        </div>
+        <div class="court-card">
+          <span>Focus</span>
+          <strong>Mindset, training, leadership</strong>
+        </div>
+      </div>
+    </header>
+
+    <section class="persona-hub" id="persona-hub">
+      <div class="persona-hub-head">
+        <div>
+          <div class="section-kicker">Legend roster</div>
+          <h2>Choose who you want to learn from</h2>
+          <p>
+            Each persona is built for basketball learning: how stars practiced, handled pressure,
+            led teams, studied the game, and turned setbacks into fuel.
+          </p>
+        </div>
+        <div class="hub-note">AI-created educational personas, not the real players.</div>
+      </div>
+
+      <div class="persona-grid">
+        <article class="persona-card is-active persona-curry" data-persona="curry" tabindex="0" role="button" aria-pressed="true">
+          <div class="persona-card-top">
+            <span class="persona-status live">Active</span>
+            <span class="persona-domain">Shooting</span>
+          </div>
+          <h3>Stephen Curry</h3>
+          <p>Talk about joy, repetition, range, confidence, off-ball movement, and changing the game without losing your own rhythm.</p>
+          <div class="persona-tags">
+            <span>Joy</span>
+            <span>Range</span>
+            <span>Work ethic</span>
+          </div>
+        </article>
+
+        <article class="persona-card persona-kobe" data-persona="kobe" tabindex="0" role="button" aria-pressed="false">
+          <div class="persona-card-top">
+            <span class="persona-status live">Active</span>
+            <span class="persona-domain">Mentality</span>
+          </div>
+          <h3>Kobe Bryant</h3>
+          <p>Explore obsessive preparation, footwork, film study, competitive fire, and the discipline behind Mamba Mentality.</p>
+          <div class="persona-tags">
+            <span>Detail</span>
+            <span>Pressure</span>
+            <span>Discipline</span>
+          </div>
+        </article>
+
+        <article class="persona-card persona-lebron" data-persona="lebron" tabindex="0" role="button" aria-pressed="false">
+          <div class="persona-card-top">
+            <span class="persona-status live">Active</span>
+            <span class="persona-domain">Leadership</span>
+          </div>
+          <h3>LeBron James</h3>
+          <p>Ask about longevity, playmaking, leadership, body care, basketball IQ, and carrying expectations from a young age.</p>
+          <div class="persona-tags">
+            <span>IQ</span>
+            <span>Longevity</span>
+            <span>Voice</span>
+          </div>
+        </article>
+
+        <article class="persona-card persona-magic" data-persona="magic" tabindex="0" role="button" aria-pressed="false">
+          <div class="persona-card-top">
+            <span class="persona-status live">Active</span>
+            <span class="persona-domain">Playmaking</span>
+          </div>
+          <h3>Magic Johnson</h3>
+          <p>Learn about pace, passing, charisma, team energy, fast-break vision, and making everyone around you feel involved.</p>
+          <div class="persona-tags">
+            <span>Vision</span>
+            <span>Energy</span>
+            <span>Trust</span>
+          </div>
+        </article>
+
+        <article class="persona-card persona-jordan" data-persona="jordan" tabindex="0" role="button" aria-pressed="false">
+          <div class="persona-card-top">
+            <span class="persona-status live">Active</span>
+            <span class="persona-domain">Competition</span>
+          </div>
+          <h3>Michael Jordan</h3>
+          <p>Discuss competitive standards, clutch focus, failure, accountability, and the mindset required to chase excellence every day.</p>
+          <div class="persona-tags">
+            <span>Standards</span>
+            <span>Clutch</span>
+            <span>Winning</span>
+          </div>
+        </article>
+
+        <article class="persona-card persona-shaq" data-persona="shaq" tabindex="0" role="button" aria-pressed="false">
+          <div class="persona-card-top">
+            <span class="persona-status live">Active</span>
+            <span class="persona-domain">Dominance</span>
+          </div>
+          <h3>Shaquille O'Neal</h3>
+          <p>Talk about power, presence, confidence, locker-room chemistry, handling criticism, and playing with personality.</p>
+          <div class="persona-tags">
+            <span>Power</span>
+            <span>Fun</span>
+            <span>Presence</span>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="brand-lockup">
+          <div class="mini-logo" aria-hidden="true">
+            <span>NBA</span>
+          </div>
+          <div>
+            <h2 class="sidebar-title">Hall Talk</h2>
+            <p class="sidebar-subtitle" id="sidebarSubtitle">Shooting, rhythm, and joyful confidence</p>
+          </div>
+        </div>
+
+        <div class="notice">
+          <div class="notice-title">Current legend</div>
+          <p id="personaNoticePrimary">
+            This experience features an AI-created Stephen Curry persona inspired by public interviews,
+            games, and widely discussed basketball principles.
+          </p>
+          <p id="personaNoticeSecondary">
+            Ask about daily reps, confidence, movement, leadership, and how a smaller guard changed the geometry of basketball.
+          </p>
+        </div>
+
+        <section class="section">
+          <div class="section-title">Suggested prompts</div>
+          <div class="prompt-list" id="promptList">
+            <button class="prompt-chip" data-prompt="How do you build confidence as a shooter?">How do you build confidence as a shooter?</button>
+            <button class="prompt-chip" data-prompt="What should young players do when they feel overlooked?">What should young players do when they feel overlooked?</button>
+            <button class="prompt-chip" data-prompt="How do you stay calm after missing shots?">How do you stay calm after missing shots?</button>
+            <button class="prompt-chip" data-prompt="What separates casual practice from game-ready practice?">What separates casual practice from game-ready practice?</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-title">Why this exists</div>
+          <div class="insight-list" id="insightList">
+            <div class="insight-item">
+              <span class="insight-dot"></span>
+              <p>Learn basketball through mindset, not just highlights.</p>
+            </div>
+            <div class="insight-item">
+              <span class="insight-dot"></span>
+              <p>Compare how different legends handled pressure, preparation, and leadership.</p>
+            </div>
+            <div class="insight-item">
+              <span class="insight-dot"></span>
+              <p>Use conversation to make NBA history feel personal and teachable.</p>
+            </div>
+          </div>
+        </section>
+
+        <div class="helper-box">
+          <div class="section-title">Backend status</div>
+          <div class="status-row">
+            <span class="status-dot" aria-hidden="true"></span>
+            <p>Connected to the live chat endpoint for this site.</p>
+          </div>
+        </div>
+      </aside>
+
+      <main class="chat-card" id="featured-chat">
+        <header class="chat-header">
+          <div>
+            <div class="section-kicker" id="chatKicker">Training room conversation</div>
+            <h2 id="chatTitle">Chat with Curry in the Hall</h2>
+            <p id="chatDescription">
+              Ask about shooting confidence, practice rhythm, off-ball movement, pressure, leadership,
+              and building a game that feels like your own.
+            </p>
+          </div>
+          <div class="badge" id="chatBadge">Legend Persona: Curry</div>
+        </header>
+
+        <section class="chat-body" id="chatBody">
+          <div class="messages" id="messages"></div>
+        </section>
+
+        <footer class="chat-footer">
+          <div class="composer-topline">
+            <span>Best for mentality, growth, training, and basketball learning.</span>
+            <span>Not a real player, coach, or personal advisor.</span>
+          </div>
+          <form class="input-form" id="chatForm">
+            <button
+              class="voice-control"
+              id="recordButton"
+              type="button"
+              aria-pressed="false"
+              title="Record a spoken question"
+            >
+              <span class="voice-control-icon" aria-hidden="true">Mic</span>
+              <span class="voice-control-text">Speak</span>
+            </button>
+            <input
+              id="chatInput"
+              class="chat-input"
+              type="text"
+              placeholder="Ask Curry a question..."
+              autocomplete="off"
+            />
+            <button
+              class="voice-toggle"
+              id="voiceToggle"
+              type="button"
+              aria-pressed="true"
+              title="Toggle AI voice playback"
+            >
+              Voice On
+            </button>
+            <button class="send-button" type="submit">Send</button>
+          </form>
+          <div class="voice-status-row">
+            <p class="voice-status" id="voiceStatus" aria-live="polite">
+              Voice ready. Speak in English or type your prompt.
+            </p>
+            <p class="voice-disclosure">
+              Audio replies use an AI-generated persona-inspired voice, not the real player's voice.
+            </p>
+          </div>
+          <p class="input-hint" id="inputHint">Try asking about confidence, reps, range, or movement without the ball.</p>
+        </footer>
+      </main>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
