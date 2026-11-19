@@ -1,3 +1,4 @@
+import {loadLeague} from './data-loader.mjs';
 import {quickLineup} from './quick-lineup.mjs';
 import {ratingTier} from './rating-tier.mjs';
 import {dayKey,restartDraft,createChallenge,createDraft,restoreDraft,pickPlayer,recordResult,cleanRecord,mergeRecords,streakForDay,buildDailyTeams,configureDraft,rerollDraft,setLineup,optimizeLineup} from './daily.mjs';
@@ -102,7 +103,7 @@ document.addEventListener('click',e=>{
  else if(t.id==='rematch'){if(activeDaily){if(!dailyCurrent())return;dailyDraft=restartDraft(dailyChallenge,dailyDraft);writeDaily('courtside-daily-draft-v1',dailyDraft);selectedLineup=null;showDraft();window.scrollTo(0,0);return;}const seed=(game.seed+1)>>>0;game=createGame(team(homeId),team(awayId),seed);boxSide='home';speed=1;renderMatch();window.scrollTo(0,0);}
  else if(t.id==='retry-load')load();
 });
-async function load(){try{const response=await fetch('data/league.json');if(!response.ok)throw Error('数据文件不可用');data=await response.json();if(data.version!==1||data.teams?.length!==30||!data.players?.length)throw Error('数据文件不完整');playerMap=new Map(data.players.map(p=>[p.id,p]));homeId=data.teams.find(t=>t.name==='湖人')?.id||data.teams[0].id;awayId=data.teams.find(t=>t.name==='勇士')?.id||data.teams[1].id;const seed=readPreferences();if(window.location.hash==='#quick')renderSetup(seed);else showDaily();startDayTimer();$('#footer-data').textContent=`${data.teams.length} 支球队 / ${data.players.length} 名球员`;window.ShaperPerformance?.markReady?.();}catch(e){app.innerHTML=`<div class="loading"><h1>球员数据暂时未就绪</h1><p>${esc(e.message)}。请通过本地启动服务打开游戏。</p><button id="retry-load" class="primary" style="margin-top:20px">重新加载</button></div>`;}}
+async function load(){try{data=await loadLeague();if(data.version!==1||data.teams?.length!==30||!data.players?.length)throw Error('数据文件不完整');playerMap=new Map(data.players.map(p=>[p.id,p]));homeId=data.teams.find(t=>t.name==='湖人')?.id||data.teams[0].id;awayId=data.teams.find(t=>t.name==='勇士')?.id||data.teams[1].id;const seed=readPreferences();if(window.location.hash==='#quick')renderSetup(seed);else showDaily();startDayTimer();$('#footer-data').textContent=`${data.teams.length} 支球队 / ${data.players.length} 名球员`;window.ShaperPerformance?.markReady?.();}catch(e){app.innerHTML=`<div class="loading"><h1>球员数据暂时未就绪</h1><p>${esc(e.message)}。请通过本地启动服务打开游戏。</p><button id="retry-load" class="primary" style="margin-top:20px">重新加载</button></div>`;}}
 window.addEventListener('shaper:performance:reset',()=>{if(data&&$('#home-select')||data&&$('#home-score'))window.ShaperPerformance?.markReady?.();});
 window.addEventListener('pagehide',()=>{stop();clearTimeout(toastTimer);clearInterval(dayTimer);});
 window.addEventListener('pageshow',()=>{if(data)startDayTimer();});
