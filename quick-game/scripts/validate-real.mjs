@@ -1,0 +1,7 @@
+import fs from 'node:fs';import assert from 'node:assert/strict';import {createGame,finish} from '../h5/engine.mjs';
+const root=new URL('../',import.meta.url),d=JSON.parse(fs.readFileSync(new URL('h5/data/league.json',root))),ps=new Map(d.players.map(p=>[p.id,p]));
+assert.equal(d.teams.length,30);assert.equal(d.report.failures.length,0);assert.equal(d.report.membershipConflicts.length,0);assert.equal(d.report.profileCoverage,1);
+const teams=d.teams.map(t=>({...t,players:t.playerIds.map(id=>ps.get(id))}));
+let overtime=0,homeWins=0,total=0,min=Infinity,max=0;
+for(let n=0;n<300;n++){const h=n%30,a=(h+1+Math.floor(n/30))%30;const g=createGame(teams[h],teams[a],n+100);finish(g);assert.notEqual(g.sides.home.score,g.sides.away.score);homeWins+=g.sides.home.score>g.sides.away.score;overtime+=g.period>4;for(const s of Object.values(g.sides)){assert.equal(s.score,s.box.reduce((a,b)=>a+b.pts,0));assert.equal(s.score,s.quarters.reduce((a,b)=>a+b,0));assert.equal(g.elapsed*5,s.box.reduce((a,b)=>a+b.seconds,0));total+=s.score;min=Math.min(min,s.score);max=Math.max(max,s.score);for(const b of s.box){assert.equal(b.pts,b.fgm*2+b.tpm+b.ftm);assert.ok(b.fgm<=b.fga&&b.tpm<=b.tpa&&b.ftm<=b.fta);}}}
+const report={games:300,checks:'points, quarters, minutes, shooting, no ties',averageTeamPoints:+(total/600).toFixed(1),minTeamPoints:min,maxTeamPoints:max,overtimeGames:overtime,homeWins,teams:teams.length,players:d.players.length};fs.writeFileSync(new URL('data/simulation-validation.json',root),JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));

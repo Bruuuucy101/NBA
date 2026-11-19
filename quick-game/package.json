@@ -1,0 +1,1 @@
+{"name":"courtside-quick-game","private":true,"version":"1.8.0","type":"module","scripts":{"start":"node scripts/serve.mjs","test":"node --test tests/*.test.mjs","sync":"node scripts/sync.mjs && node scripts/build-data.mjs","build:data":"node scripts/build-data.mjs","update:daily":"node scripts/update-daily.mjs"},"engines":{"node":">=20"}}

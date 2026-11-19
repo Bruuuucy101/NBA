@@ -1,0 +1,5 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';
+import {createGame,step,finish,setAutoCoach} from '../h5/engine.mjs';import {sortRoster,buildDataset} from '../h5/model.mjs';
+const data=buildDataset(JSON.parse(fs.readFileSync(new URL('../data/snapshot.json',import.meta.url))));const teams=data.teams.slice(0,2).map(t=>({...t,players:sortRoster(t.playerIds.map(id=>data.players.find(p=>p.id===id)))}));
+test('split defensive skills are bounded, distinct estimates',()=>{assert.ok(data.players.some(p=>p.skills.interiorDefense!==p.skills.perimeterDefense));for(const p of data.players)for(const v of Object.values(p.skills))assert.ok(v>=40&&v<=99);});
+test('automatic coaching is deterministic and can return to manual',()=>{const a=createGame(...teams,42),b=createGame(...teams,42);for(const g of [a,b])setAutoCoach(g,'away',true);step(a);assert.ok(a.tacticHistory.length);const n=a.tacticHistory.length;setAutoCoach(a,'away',false);for(let i=0;i<20;i++)step(a);assert.equal(a.tacticHistory.length,n);const c=createGame(...teams,42);setAutoCoach(c,'away',true);finish(b);finish(c);assert.deepEqual(b.history,c.history);});

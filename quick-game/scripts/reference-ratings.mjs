@@ -1,0 +1,25 @@
+// User-provided screenshot values override estimates only after identity resolution.
+export const normalizeName=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'').replace(/(jr|iii|ii|iv)$/,'');
+const aliases={alexsarr:'alexandresarr'};
+const cnPositions={PG:'控球后卫',SG:'得分后卫',SF:'小前锋',PF:'大前锋',C:'中锋'};
+const extraNames={'Kevin Porter Jr.':'小凯文-波特','Lonnie Walker IV':'朗尼-沃克四世','Trey Kaufman-Renn':'特雷-考夫曼-伦','Tamar Bates':'塔马尔-贝茨','Jamarion Sharp':'贾马里昂-夏普','Haywood Highsmith':'海伍德-海史密斯'};
+export function parseReference(text){return text.trim().split(/\r?\n/).filter(x=>x&&!x.startsWith('#')).map(line=>{const [image,name,position,numbers]=line.split('|'),v=numbers?.split(' ').map(Number);if(!cnPositions[position]||v?.length!==7||v.some(n=>!Number.isInteger(n)||n<0||n>99))throw Error('Invalid screenshot row: '+name);return {image:Number(image),name,position,inside:v[0],outside:v[1],playmaking:v[2],rebounding:v[3],interiorDefense:v[4],perimeterDefense:v[5],overall:v[6]};});}
+const role=p=>p.primaryPosition?(p.primaryPosition==='C'?'big':['PG','SG'].includes(p.primaryPosition)?'guard':'wing'):p.role;
+const vector=p=>[p.ratings.scoring,p.ratings.shooting,p.ratings.playmaking,p.ratings.rebounding,p.skills.interiorDefense,p.skills.perimeterDefense,p.overall];
+const target=r=>[r.inside,r.outside,r.playmaking,r.rebounding,r.interiorDefense,r.perimeterDefense,r.overall];
+const clip=n=>Math.max(40,Math.min(99,Math.round(n)));
+function install(p,values,provenance,position){const [scoring,shooting,playmaking,rebounding,interiorDefense,perimeterDefense,overall]=values;return {...p,...(position?{primaryPosition:position,position:cnPositions[position],role:position==='C'?'big':['PG','SG'].includes(position)?'guard':'wing'}:{}),ratings:{scoring,shooting,playmaking,rebounding,defense:Math.round((interiorDefense+perimeterDefense)/2),stamina:p.ratings.stamina},skills:{interiorDefense,perimeterDefense},overall,ratingSource:provenance,modelVersion:'reference-v1',estimates:provenance.kind==='screenshot'?['stamina','aggregateDefense']:['allRatings']};}
+export function applyReference(dataset,rows){
+ const d=structuredClone(dataset),byName=new Map();for(const p of d.players){const key=normalizeName(p.english);if(!key)continue;if(byName.has(key))throw Error('Ambiguous identity: '+key);byName.set(key,p);}
+ const used=new Set(),matched=[],missing=[];
+ for(const r of rows){const key=aliases[normalizeName(r.name)]||normalizeName(r.name);if(used.has(key))throw Error('Duplicate reference identity: '+r.name);used.add(key);const p=byName.get(key);if(p)matched.push({base:p,reference:r});else missing.push(r);}
+ const anchors=new Map(matched.map(m=>[m.base.id,m]));const estimated=[];
+ d.players=d.players.map(p=>{const a=anchors.get(p.id);if(a)return install(p,target(a.reference),{kind:'screenshot',image:a.reference.image,name:a.reference.name},a.reference.position);
+  const features=vector(p);let pool=matched.filter(m=>(m.reference.position==='C'?'big':['PG','SG'].includes(m.reference.position)?'guard':'wing')===role(p));if(pool.length<8)pool=matched;
+  const nearest=pool.map(m=>({...m,distance:Math.sqrt(vector(m.base).reduce((sum,v,i)=>sum+((v-features[i])/20)**2,0))})).sort((a,b)=>a.distance-b.distance||a.base.id.localeCompare(b.base.id)).slice(0,8);const weights=nearest.map(a=>1/(.25+a.distance)**2),total=weights.reduce((a,b)=>a+b,0);
+  const values=features.map((value,i)=>{const mean=nearest.reduce((s,a,j)=>s+weights[j]*target(a.reference)[i],0)/total,baseMean=nearest.reduce((s,a,j)=>s+weights[j]*vector(a.base)[i],0)/total;return clip(mean+(value-baseMean)*(i===6?.6:.35));});values[6]=Math.max(60,Math.min(95,values[6]));
+  const source={kind:'estimated',method:'same-role-8-neighbor-v1',neighbors:nearest.map(a=>a.base.id),lowConfidence:p.confidence<.25};estimated.push({id:p.id,name:p.name,overall:values[6],...source});return install(p,values,source);
+ });
+ for(const r of missing){if(!extraNames[r.name])throw Error('Unresolved reference identity: '+r.name);const id='reference-'+normalizeName(r.name);const p={id,name:extraNames[r.name],shortName:extraNames[r.name],english:r.name,position:cnPositions[r.position],primaryPosition:r.position,number:'—',photo:null,height:null,age:null,injury:null,leaveTeam:false,stats:Object.fromEntries(['pts','reb','asts','min','fgp','tpp','ftp','stl','blk','to','oreb','dreb','pf','games'].map(k=>[k,null])),ratings:{stamina:70},role:r.position==='C'?'big':['PG','SG'].includes(r.position)?'guard':'wing',confidence:0,missing:['pts','reb','asts','min','games'],profileAvailable:false,supplemental:true,teamMembershipVerified:false};d.players.push(install(p,target(r),{kind:'screenshot',image:r.image,name:r.name,supplemental:true},r.position));}
+ d.modelVersion='reference-v1';d.referenceReport={screenshotRows:rows.length,matchedExisting:matched.length,supplemental:missing.length,estimated:estimated.length,totalPlayers:d.players.length,sourceRosterPlayers:dataset.players.length,supplementalPlayers:d.players.filter(p=>p.supplemental).map(p=>({id:p.id,name:p.name,english:p.english})),estimatedPlayers:estimated};return d;
+}
