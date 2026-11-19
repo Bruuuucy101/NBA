@@ -81,6 +81,7 @@ const watchRewardVideo=createRewardVideo();
 let rerollBusy=false;
 document.addEventListener('click',async e=>{
  const t=e.target.closest('button');if(!t||rerollBusy)return;
+ if(t.id==='about-game'){modal('<section class="about-game"><h2>关于74-8</h2><p>74-8，代表 82 场常规赛中的 74 胜 8 负：比勇士在 2015—16 赛季创造的 73 胜 9 负再多赢一场，寓意组建属于你的球队，挑战传奇、超越极限。</p><h3>现在可以玩什么？</h3><p><strong>每日挑战：</strong>通过 10 轮选秀组建 5 名首发与 5 名替补，调整阵容，挑战当天所有玩家共同面对的今日之队，赢球延续通关天数。</p><p><strong>快速比赛：</strong>任选两支球队直接开赛，调整攻防战术与轮换，查看比赛解说、胜率走势和球员统计。</p></section>');return;}
  if(t.dataset.mode){requestMode(t.dataset.mode);return;}
  if(t.dataset.pick){if(!dailyCurrent())return;if(Number(t.dataset.round)!==dailyDraft.picks.length)return;try{dailyDraft=pickPlayer(data,dailyChallenge,dailyDraft,t.dataset.pick);writeDaily('courtside-daily-draft-v1',dailyDraft);showDraft();}catch(e){toast(e.message);}return;}
  if(t.dataset.player){if($('#dialog').open)$('#dialog').close();showPlayer(t.dataset.player);return;}
