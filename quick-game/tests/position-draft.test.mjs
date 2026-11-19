@@ -7,7 +7,7 @@ test('all five core positions draft matching starters and bench without repeatin
  for(let round=0;round<10;round++){
  for(let roll=0;roll<(round===0?4:1);roll++){
  const choices=draftChoices(data,c,d);assert.equal(choices.length,3);for(const p of choices){assert.ok(eligibleSlots(p).includes(order[round]),`${p.name} in ${order[round]}`);assert.ok(!seen.has(p.id));seen.add(p.id);}
- d=round===0&&roll<3?rerollDraft(data,c,d):pickPlayer(data,c,d,choices[0].id);assert.deepEqual(restoreDraft(d,data,c),d);
+ d=round===0&&roll<3?rerollDraft(data,c,d,{code:200,data:{rewarded:true}}):pickPlayer(data,c,d,choices[0].id);assert.deepEqual(restoreDraft(d,data,c),d);
  }
  }
  for(const lineup of [d.lineup,optimizeLineup(data,d).lineup])lineup.forEach((id,i)=>assert.ok(eligibleSlots(map.get(id)).includes(SLOTS[i])));

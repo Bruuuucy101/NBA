@@ -29,7 +29,7 @@ export function createChallenge(data,date=dayKey()){
  }
  return {date,key,seed,opponentIds,slots:[...SLOTS],modelVersion:data.modelVersion||'v1'};
 }
-export function createDraft(challenge,attempt=0){return {version:3,attempt,date:challenge.date,key:challenge.key,franchise:{name:'我的球队',abbreviation:'我的队'},starPosition:'PG',picks:[],lineup:[],actions:[],rerollsLeft:3,roll:0,excluded:[]};}
+export function createDraft(challenge,attempt=0){return {version:4,attempt,date:challenge.date,key:challenge.key,franchise:{name:'我的球队',abbreviation:'我的队'},starPosition:'PG',picks:[],lineup:[],actions:[],rerollsLeft:1,roll:0,excluded:[]};}
 export function configureDraft(draft,config){
  if(draft.actions.length)throw Error('选秀开始后不能修改球队设置');
  const name=String(config.name||'').trim(),abbreviation=String(config.abbreviation||'').trim();
@@ -67,10 +67,17 @@ export function pickPlayer(data,challenge,draft,id){
  const picks=[...draft.picks,id];
  return {...draft,picks,lineup:picks.length===10?initialLineup(picks,draft.starPosition):[],actions:[...draft.actions,{type:'pick',id}],roll:0,excluded:[...draft.excluded,...shown.map(p=>p.id)]};
 }
-export function rerollDraft(data,challenge,draft){
- if(draft.picks.length>=10||draft.rerollsLeft<=0)throw Error('重抽次数已用完');
+export function rerollDraft(data,challenge,draft,reward){
+ if(draft.picks.length>=10)throw Error('选秀已经结束');
+ const paid=draft.rerollsLeft<=0;
+ if(paid&&(reward?.code!==200||reward?.data?.rewarded!==true))throw Error('免费重抽已用完，请观看广告获得一次重抽');
  const excluded=[...draft.excluded,...draftChoices(data,challenge,draft).map(p=>p.id)];
- return {...draft,rerollsLeft:draft.rerollsLeft-1,roll:draft.roll+1,excluded,actions:[...draft.actions,{type:'reroll'}]};
+ const next={...draft,rerollsLeft:Math.max(0,draft.rerollsLeft-1),roll:draft.roll+1,excluded,actions:[...draft.actions,{type:paid?'reward-reroll':'reroll'}]};
+ draftChoices(data,challenge,next); // Check supply before spending a free attempt or showing an ad.
+ return next;
+}
+export function canReroll(data,challenge,draft){
+ try{rerollDraft(data,challenge,draft,{code:200,data:{rewarded:true}});return true;}catch{return false;}
 }
 export function setLineup(draft,order,data){
  if(draft.picks.length!==10||!Array.isArray(order)||order.length!==10||new Set(order).size!==10||order.some(id=>!draft.picks.includes(id)))throw Error('阵容必须包含全部十名已选球员且不能重复');
@@ -91,11 +98,11 @@ export function optimizeLineup(data,draft){
 }
 export function restoreDraft(raw,data,challenge){
  let draft=createDraft(challenge);
- try{const saved=typeof raw==='string'?JSON.parse(raw):raw;if(saved?.version!==3||saved.date!==challenge.date||saved.key!==challenge.key||!Array.isArray(saved.actions)||saved.actions.length>13)return draft;
+ try{const saved=typeof raw==='string'?JSON.parse(raw):raw;if(saved?.version!==4||saved.date!==challenge.date||saved.key!==challenge.key||!Array.isArray(saved.actions)||saved.actions.length>data.players.length)return draft;
   if(!Number.isSafeInteger(saved.attempt??0)||(saved.attempt??0)<0)throw Error('Invalid attempt');
   draft=createDraft(challenge,saved.attempt??0);
   draft=configureDraft(draft,{...saved.franchise,starPosition:saved.starPosition});
-  for(const action of saved.actions){if(action.type==='pick')draft=pickPlayer(data,challenge,draft,action.id);else if(action.type==='reroll')draft=rerollDraft(data,challenge,draft);else throw Error('Invalid action');}
+  for(const action of saved.actions){if(action.type==='pick')draft=pickPlayer(data,challenge,draft,action.id);else if(action.type==='reroll')draft=rerollDraft(data,challenge,draft);else if(action.type==='reward-reroll'&&draft.rerollsLeft===0)draft=rerollDraft(data,challenge,draft,{code:200,data:{rewarded:true}});else throw Error('Invalid action');}
   if(JSON.stringify(draft.picks)!==JSON.stringify(saved.picks)||draft.rerollsLeft!==saved.rerollsLeft)throw Error('Invalid replay');
   if(draft.picks.length===10)draft=setLineup(draft,saved.lineup,data);
   return draft;

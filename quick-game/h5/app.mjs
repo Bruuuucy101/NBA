@@ -1,7 +1,8 @@
+import {createRewardVideo} from './reward-video.mjs';
 import {loadLeague} from './data-loader.mjs';
 import {quickLineup} from './quick-lineup.mjs';
 import {ratingTier} from './rating-tier.mjs';
-import {dayKey,restartDraft,createChallenge,createDraft,restoreDraft,pickPlayer,recordResult,cleanRecord,mergeRecords,streakForDay,buildDailyTeams,configureDraft,rerollDraft,setLineup,optimizeLineup} from './daily.mjs';
+import {dayKey,restartDraft,createChallenge,createDraft,restoreDraft,pickPlayer,recordResult,cleanRecord,mergeRecords,streakForDay,buildDailyTeams,configureDraft,canReroll,rerollDraft,setLineup,optimizeLineup} from './daily.mjs';
 import {dailyLobby,dailyDraftView,dailySetupView,lineupView} from './daily-view.mjs';
 import {sortRoster} from './model.mjs';
 import {createGame,step,finish,setTactics,tacticOptions,rotationDepth,setAutoCoach} from './engine.mjs';
@@ -76,8 +77,10 @@ document.addEventListener('change',e=>{
  else if(t.id==='seed')save();else if(t.dataset.tactic)changeTactic(t.dataset.side,t.dataset.tactic,t.value);
 });
 function changeTactic(side,key,value){if(!game||timer||game.status==='final'||activeDaily&&side==='away'||game.sides[side].autoCoach)return;setTactics(game,side,{[key]:value});document.querySelector(`[data-side="${side}"][data-tactic]`).closest('.tactic-panel').outerHTML=tacticPanel(side);syncSelectValues();toast('战术已更新，下个回合生效');}
-document.addEventListener('click',e=>{
- const t=e.target.closest('button');if(!t)return;
+const watchRewardVideo=createRewardVideo();
+let rerollBusy=false;
+document.addEventListener('click',async e=>{
+ const t=e.target.closest('button');if(!t||rerollBusy)return;
  if(t.dataset.mode){requestMode(t.dataset.mode);return;}
  if(t.dataset.pick){if(!dailyCurrent())return;if(Number(t.dataset.round)!==dailyDraft.picks.length)return;try{dailyDraft=pickPlayer(data,dailyChallenge,dailyDraft,t.dataset.pick);writeDaily('courtside-daily-draft-v1',dailyDraft);showDraft();}catch(e){toast(e.message);}return;}
  if(t.dataset.player){if($('#dialog').open)$('#dialog').close();showPlayer(t.dataset.player);return;}
@@ -92,7 +95,18 @@ document.addEventListener('click',e=>{
  else if(t.id==='finish-game'){if(!canStartMatch())return;stop();try{finish(game);updateMatch();}catch(e){toast(e.message);}}
  else if(t.id==='daily-begin'){if(dailyCurrent()){if(dailyDraft.actions.length)showDraft();else {app.innerHTML=dailySetupView(data,dailyChallenge,dailyDraft);syncSelectValues();}}}
  else if(t.id==='enter-draft'){if(!dailyCurrent())return;try{dailyDraft=configureDraft(dailyDraft,{name:$('#franchise-name').value,abbreviation:$('#franchise-abbreviation').value,starPosition:$('#star-position').value});writeDaily('courtside-daily-draft-v1',dailyDraft);showDraft();}catch(e){toast(e.message);}}
- else if(t.id==='reroll-draft'){if(!dailyCurrent())return;try{dailyDraft=rerollDraft(data,dailyChallenge,dailyDraft);writeDaily('courtside-daily-draft-v1',dailyDraft);showDraft();}catch(e){toast(e.message);}}
+ else if(t.id==='reroll-draft'){
+  if(!dailyCurrent())return;
+  if(!canReroll(data,dailyChallenge,dailyDraft)){toast('该位置已没有足够的新球员，请从当前候选中选择');return;}
+  const original=dailyDraft;let reward,warning='';
+  rerollBusy=true;t.disabled=true;
+  try{
+   if(!original.rerollsLeft){t.textContent='广告进行中，请稍候…';const confirmed=await watchRewardVideo();reward=confirmed.result;warning=confirmed.warning;}
+   if(!dailyCurrent()||dailyDraft!==original)return;
+   dailyDraft=rerollDraft(data,dailyChallenge,dailyDraft,reward);
+   writeDaily('courtside-daily-draft-v1',dailyDraft);showDraft();if(warning)toast(warning);
+  }catch(error){toast(error.message);}finally{rerollBusy=false;if(t.isConnected){t.disabled=false;t.textContent=dailyDraft.rerollsLeft?'免费重抽（1/1）':'观看广告 · 重抽一次';}}
+ }
  else if(t.id==='optimize-lineup'){if(!dailyCurrent())return;dailyDraft=optimizeLineup(data,dailyDraft);selectedLineup=null;writeDaily('courtside-daily-draft-v1',dailyDraft);showDraft();}
  else if(t.dataset.swap!==undefined){if(!dailyCurrent())return;const index=Number(t.dataset.swap);if(selectedLineup===null)selectedLineup=index;else {const order=[...dailyDraft.lineup];[order[index],order[selectedLineup]]=[order[selectedLineup],order[index]];try{dailyDraft=setLineup(dailyDraft,order,data);}catch(error){toast(error.message);}selectedLineup=null;writeDaily('courtside-daily-draft-v1',dailyDraft);}showDraft();}
  else if(t.id==='daily-lobby-back')showDaily();
