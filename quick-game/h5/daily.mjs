@@ -1,3 +1,4 @@
+import {dailyPool} from './daily-pool.mjs';
 export const SLOTS=['PG','SG','SF','PF','C','PG','SG','SF','PF','C'];
 export function dayKey(date=new Date()){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);}
 function validDay(s){return typeof s==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(s)&&!Number.isNaN(Date.parse(s))&&new Date(s+'T00:00:00Z').toISOString().slice(0,10)===s;}
@@ -15,9 +16,10 @@ export function eligibleSlots(p){
 function sample(pool,n,rng){const bag=[...pool],out=[];while(out.length<n&&bag.length){out.push(bag.splice(Math.floor(rng()*bag.length),1)[0]);}return out;}
 export function createChallenge(data,date=dayKey()){
  if(!validDay(date))throw Error('Invalid daily date');
- const players=[...data.players].filter(p=>!p.leaveTeam).sort((a,b)=>a.id.localeCompare(b.id));
- const fingerprint=hash(players.map(p=>`${p.id}:${p.overall}:${Object.values(p.ratings).join(',')}:${JSON.stringify(p.skills||{})}:${p.position}:${p.height}:${p.stats?.asts}`).join('|'));
- const key=`daily-v3-hard:${data.season}:${data.modelVersion||'v1'}:${fingerprint}:${date}`,seed=hash(key),rng=generator(seed);
+ const referenceMode=data.players.some(p=>p.ratingSource?.kind==='screenshot');
+ const players=referenceMode?dailyPool:[...data.players].filter(p=>!p.leaveTeam);
+ if(referenceMode){const ids=new Set(data.players.map(p=>p.id));if(dailyPool.some(p=>!ids.has(p.id)))throw Error('今日之队资料不完整，请重新加载');}
+ const key=`daily-v4-fixed:${date}`,seed=hash(key),rng=generator(seed);
  const used=new Set(),opponentIds=[];
  // Strong positional starters; backups are also selected from the upper rotation tier.
  for(let i=0;i<10;i++){
