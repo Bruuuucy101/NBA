@@ -1,0 +1,23 @@
+const tcb=require('@cloudbase/node-sdk'),crypto=require('crypto');
+const base=require('./league.json');
+const app=tcb.init({env:process.env.CLOUDBASE_ENV_ID||process.env.TCB_ENV,accessKey:process.env.COLORBOX__ACCESS_KEY});
+async function rpc(name,args){const c=await app.auth().getClientCredential(),token=typeof c==='string'?c:c.access_token;
+const r=await fetch(`https://${process.env.CLOUDBASE_ENV_ID||process.env.TCB_ENV}.api.tcloudbasegateway.com/v1/rdb/rest/rpc/${name}`,{method:'POST',headers:{Authorization:`Bearer ${token}`,'X-Db-Instance':'default','Accept-Profile':'public','Content-Profile':'public','Content-Type':'application/json'},body:JSON.stringify(args)});if(!r.ok)throw Error('snapshot database '+r.status);const text=await r.text();return text?JSON.parse(text):null;}
+const pause=()=>new Promise(r=>setTimeout(r,250));
+async function api(path,params){await pause();const u=new URL(path,'https://games.mobileapi.hupu.com/3/8.2.62/basketballapi/');Object.entries(params).forEach(([k,v])=>u.searchParams.set(k,v));const r=await fetch(u,{signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error('source HTTP '+r.status);const j=await r.json();if(!j.result)throw Error('source result missing');return j.result;}
+function stats(row,old={}){const s={...old};for(const k of ['pts','reb','asts','min','fgp','tpp','ftp','stl','blk','to','oreb','dreb','pf']){const v=parseFloat(row[k]);if(Number.isFinite(v)&&v>=0)s[k]=v;}const n=parseInt(row.game_played_start);if(Number.isFinite(n))s.games=n;return s;}
+async function collect(previous=base){const result=structuredClone(base),existing=new Map(previous.players.map(p=>[p.id,p]));for(const p of result.players){const old=existing.get(p.id);if(old)p.stats=old.stats;}
+ const players=new Map(result.players.map(p=>[p.id,p]));for(const p of previous.players)if(!players.has(p.id)){result.players.push(p);players.set(p.id,p);}
+ const standings=await api('teamStandingList',{competitionLeagueType:'nba',competitionType:'nba',season:base.season,competitionStageType:'REGULAR'});
+ const ranks=new Map(Object.values(standings.rankTypeListMap||{}).flat().map(t=>[String(t.teamId),t]));
+ for(const team of result.teams){const rank=ranks.get(team.id);if(!rank||!Number.isFinite(Number(rank.won))||!Number.isFinite(Number(rank.lost)))throw Error('standings incomplete');team.won=Number(rank.won);team.lost=Number(rank.lost);
+ const roster=await api('teamPlayerList',{teamId:team.id,leagueType:'nba',competitionType:'nba',competitionLeagueType:'nba'});if(!Array.isArray(roster.list)||roster.list.length<5)throw Error('roster incomplete');team.playerIds=[];
+ for(const row of roster.list){const id=String(row.playerId);if(!id||id==='undefined')throw Error('missing player ID');let p=players.get(id);
+ if(!p){const info=(await api('playerPageHeadInfo',{playerId:id,leagueType:'nba'})).player||{},pos=info.position||row.position||'',slot=/控/.test(pos)?'PG':/得分|后卫/.test(pos)?'SG':/中锋/.test(pos)?'C':/大前/.test(pos)?'PF':'SF',s=stats(row);
+ const pool=base.players.filter(p=>p.primaryPosition===slot);pool.sort((a,b)=>distance(a.stats,s)-distance(b.stats,s));const template=pool[0];p={...structuredClone(template),id,name:info.name||row.player_name,shortName:info.alias||row.player_name,english:info.eng_name||row.player_name,position:pos,primaryPosition:slot,photo:info.big_photo||row.player_header_big,number:String(row.number||''),stats:s,ratingSource:{kind:'estimated',method:'nearest-position-stat-profile-v1'},modelVersion:'estimated-v1',confidence:.45};result.players.push(p);players.set(id,p);}
+ p.stats=stats(row,p.stats);team.playerIds.push(id);
+ }team.playerIds=[...new Set(team.playerIds)];}
+ result.updatedAt=new Date().toISOString();result.report={...result.report,complete:true,source:'hupu-cloud-nightly',updatedAt:result.updatedAt};return result;}
+function distance(a,b){return ['pts','reb','asts','min'].reduce((s,k)=>s+((a[k]||0)-(b[k]||0))**2,0);}
+exports.main=async(event={})=>{const owner=crypto.randomUUID(),lock=await rpc('basketball_lock',{p_owner:owner});if(lock.skip)return {skipped:true,reason:'24h guard or active sync'};try{if(event.seedOnly&&lock.payload)return {seeded:false,reason:'already initialized'};const next=event.seedOnly?base:await collect(lock.payload||base);if(event.dryRun)return {validated:true,teams:next.teams.length,players:next.players.length};const ok=await rpc('basketball_publish',{p_owner:owner,p_payload:next,p_seed:!!event.seedOnly});if(!ok)throw Error('lost update lease');return {updated:!event.seedOnly,seeded:!!event.seedOnly,teams:next.teams.length,players:next.players.length};}finally{await rpc('basketball_unlock',{p_owner:owner});}};
+exports.collect=collect;

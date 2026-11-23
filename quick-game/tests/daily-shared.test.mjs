@@ -15,3 +15,15 @@ test('today team badges use one style including elite ratings',()=>{
  const c=createChallenge(data,'2026-11-19'),html=dailyLobby(data,c,createDraft(c),{});
  assert.equal((html.match(/class="daily-rating"/g)||[]).length,5);assert.ok(!html.includes('elite-rating'));
 });
+
+test('November 21 curated starters retain screenshot ratings and capped backups',()=>{
+ const c=createChallenge(data,'2026-11-21');
+ assert.deepEqual(c.opponentIds.slice(0,5),['1901000000473221','1901000000443393','1901000000443105','1901000000470803','1901000000448416']);
+ const roster=c.opponentIds.map(id=>data.players.find(p=>p.id===id));
+ assert.deepEqual(roster.slice(0,5).map(p=>p.overall),[94,85,90,85,96]);
+ assert.ok(roster.slice(5).every(p=>p.overall<=82));
+ assert.equal(new Set(c.opponentIds).size,10);
+ assert.ok(!createChallenge(data,'2026-11-22').key.includes('curated'));
+ const reversed=structuredClone(data);reversed.players.reverse();
+ assert.deepEqual(createChallenge(reversed,'2026-11-21').opponentIds,c.opponentIds);
+});

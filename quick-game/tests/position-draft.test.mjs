@@ -14,3 +14,18 @@ test('all five core positions draft matching starters and bench without repeatin
  const invalid=[...d.lineup];[invalid[0],invalid[4]]=[invalid[4],invalid[0]];assert.throws(()=>setLineup(d,invalid,data));
  }
 });
+
+test('three free rerolls persist across picks; further rerolls require confirmed reward',()=>{
+ const c=createChallenge(data,'2026-11-21');let d=createDraft(c);
+ assert.equal(d.rerollsLeft,3);
+ for(let remaining=2;remaining>=0;remaining--){
+  d=rerollDraft(data,c,d);assert.equal(d.rerollsLeft,remaining);
+  d=pickPlayer(data,c,d,draftChoices(data,c,d)[0].id);
+  assert.equal(d.rerollsLeft,remaining);assert.deepEqual(restoreDraft(d,data,c),d);
+ }
+ assert.throws(()=>rerollDraft(data,c,d),/观看广告/);
+ assert.throws(()=>rerollDraft(data,c,d,{code:200,data:{rewarded:false}}),/观看广告/);
+ d=rerollDraft(data,c,d,{code:200,data:{rewarded:true}});
+ assert.equal(d.rerollsLeft,0);assert.equal(d.actions.at(-1).type,'reward-reroll');
+ assert.deepEqual(restoreDraft(d,data,c),d);
+});

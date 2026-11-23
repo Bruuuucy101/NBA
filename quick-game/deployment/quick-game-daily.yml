@@ -1,0 +1,57 @@
+name: Quick Game daily data
+on:
+  schedule:
+    # 16:00 UTC = next day 00:00 Asia/Shanghai
+    - cron: '0 16 * * *'
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'quick-game/**'
+      - '.github/workflows/quick-game-daily.yml'
+permissions:
+  contents: write
+concurrency:
+  group: quick-game-daily
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: quick-game
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Save rating baseline
+        run: |
+          cp h5/data/league.json "$RUNNER_TEMP/quick-game-before.json"
+          sha256sum data/reference/ratings.txt > "$RUNNER_TEMP/quick-game-ratings.sha256"
+      - name: Update roster, standings and season averages
+        run: node scripts/update-daily.mjs --force
+      - name: Verify locked screenshot ratings
+        run: |
+          sha256sum -c "$RUNNER_TEMP/quick-game-ratings.sha256"
+          node scripts/verify-rating-lock.mjs "$RUNNER_TEMP/quick-game-before.json" h5/data/league.json
+          npm test
+      - name: Save verified data
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add h5/data/league.json h5/data/completeness.json data/snapshot.json data/reference/ratings.json data/reference/coverage.json data/update-status.json
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update Quick Game daily data; preserve screenshot ratings'
+            git push origin HEAD:main
+          fi
+      - name: Package playable game
+        run: |
+          mkdir -p "$RUNNER_TEMP/quick-game-site/quick-game"
+          cp -R h5/. "$RUNNER_TEMP/quick-game-site/quick-game/"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: quick-game-site
+          path: ${{ runner.temp }}/quick-game-site
+          retention-days: 7

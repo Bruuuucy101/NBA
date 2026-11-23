@@ -1,0 +1,7 @@
+# Screenshot-faithful Chinese daily flow
+User requests faithful replication and Chinese translation. Work within existing local project and preserve 525-player data + calibrated ratings. Current scope assumption: Daily and Quick; optional scope question pending for other home modes.
+## Implementation
+1. Daily schema v2: franchise name/abbreviation/star position; first round superstar at chosen position, remaining nine general-pool choices, 3 total deterministic rerolls with replayable action log; slot draft display + ten-player lineup order, click-swap and global assignment optimizer. Validate replay and permutations, preserve date/streak protections. Explain old draft reset, retain win records.
+2. Screenshot layouts: centered gradient 74-8 landing, daily card, setup form, roster above 3 wide candidate cards, two-column lineup adjustment, match scouting and top performers on both sides, horizontal scoreboard, speed bar, win-probability chart, feed. Translate all authored UI English, retain numeric brand and source player identity only as metadata.
+3. Engine: split interior/perimeter defense estimates for six reference attributes and use them in relevant shot defense; preserve skill/base data. Optional rule-based auto coach with deterministic updates, not LLM service. Test new setup/reroll/replay/optimizer/lineup/auto coach and regress prior full flow.
+4. Independently review and verify test/DOM flows; screenshot verification if available, otherwise explicit limitation. Update docs and archive.

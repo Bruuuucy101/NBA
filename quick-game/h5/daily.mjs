@@ -1,3 +1,4 @@
+import {validLineups} from './daily-config.mjs';
 import {dailyPool} from './daily-pool.mjs';
 export const SLOTS=['PG','SG','SF','PF','C','PG','SG','SF','PF','C'];
 export function dayKey(date=new Date()){return new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Shanghai',year:'numeric',month:'2-digit',day:'2-digit'}).format(date);}
@@ -19,22 +20,26 @@ export function createChallenge(data,date=dayKey()){
  const referenceMode=data.players.some(p=>p.ratingSource?.kind==='screenshot');
  const players=referenceMode?dailyPool:[...data.players].filter(p=>!p.leaveTeam);
  if(referenceMode){const ids=new Set(data.players.map(p=>p.id));if(dailyPool.some(p=>!ids.has(p.id)))throw Error('今日之队资料不完整，请重新加载');}
- const key=`daily-v4-fixed:${date}`,seed=hash(key),rng=generator(seed);
+ const configured=validLineups(data.dailyLineups)[date];
+ const curated=configured||(referenceMode&&date==='2026-11-21'?['1901000000473221','1901000000443393','1901000000443105','1901000000470803','1901000000448416']:null);
+ const key=`daily-v6-close:${date}${configured?':cloud-'+configured.join('-'):curated?':curated-1':''}`,seed=hash(key),rng=generator(seed);
  const used=new Set(),opponentIds=[];
- // Strong positional starters; backups are also selected from the upper rotation tier.
+ // Keep existing days unchanged. From 2026-11-21 (Shanghai), backups have OVR <= 82.
  for(let i=0;i<10;i++){
-  const pool=players.filter(p=>!used.has(p.id)&&eligibleSlots(p).includes(SLOTS[i])).sort((a,b)=>b.overall-a.overall||a.id.localeCompare(b.id)).slice(0,i<5?3:6);
+  const pool=players.filter(p=>!used.has(p.id)&&eligibleSlots(p).includes(SLOTS[i])&&(i<5||date<'2026-11-21'||p.overall<=82)).sort((a,b)=>b.overall-a.overall||a.id.localeCompare(b.id)).slice(0,i<5?2:3);
   if(!pool.length)throw Error('该位置可用球员不足');
-  const p=sample(pool,1,rng)[0];used.add(p.id);opponentIds.push(p.id);
+  const p=curated&&i<5?players.find(p=>p.id===curated[i]):sample(pool,1,rng)[0];
+  if(!p||!eligibleSlots(p).includes(SLOTS[i]))throw Error('今日指定球员位置资料不完整');
+  used.add(p.id);opponentIds.push(p.id);
  }
  return {date,key,seed,opponentIds,slots:[...SLOTS],modelVersion:data.modelVersion||'v1'};
 }
-export function createDraft(challenge,attempt=0){return {version:4,attempt,date:challenge.date,key:challenge.key,franchise:{name:'我的球队',abbreviation:'我的队'},starPosition:'PG',picks:[],lineup:[],actions:[],rerollsLeft:1,roll:0,excluded:[]};}
+export function createDraft(challenge,attempt=0){return {version:4,attempt,date:challenge.date,key:challenge.key,franchise:{name:'我的球队',abbreviation:'我的队'},starPosition:'PG',picks:[],lineup:[],actions:[],freeRerollLimit:3,rerollsLeft:3,roll:0,excluded:[]};}
 export function configureDraft(draft,config){
  if(draft.actions.length)throw Error('选秀开始后不能修改球队设置');
  const name=String(config.name||'').trim(),abbreviation=String(config.abbreviation||'').trim();
- if(!name||name.length>24||!abbreviation||abbreviation.length>6||!SLOTS.slice(0,5).includes(config.starPosition))throw Error('球队名称限1–24字，简称限1–6字，请选择球星位置');
- return {...draft,franchise:{name,abbreviation},starPosition:config.starPosition};
+ if(!name||name.length>80||!abbreviation||abbreviation.length>80||!SLOTS.slice(0,5).includes(config.starPosition))throw Error('登录昵称无效，请重新获取并选择球星位置');
+ return {...draft,franchise:{name,abbreviation,...(config.avatar?{avatar:config.avatar}:{})},starPosition:config.starPosition};
 }
 export function draftChoices(data,challenge,draft){
  if(draft.key!==challenge.key||draft.date!==challenge.date||!Array.isArray(draft.picks))throw Error('选秀已过期');
@@ -47,7 +52,7 @@ export function draftChoices(data,challenge,draft){
  else{
   // Draw each candidate independently: ordinary rotation players are common, stars rare.
   pool.sort((a,b)=>a.id.localeCompare(b.id));
-  const bands=[[0,74,.35],[75,79,.25],[80,85,.32],[86,89,.07],[90,99,.01]],out=[];
+  const bands=[[0,74,.15],[75,79,.28],[80,85,.55],[86,89,.018],[90,99,.002]],out=[];
   for(let n=0;n<3;n++){
    const available=bands.map(([min,max,weight])=>({weight,players:pool.filter(p=>p.overall>=min&&p.overall<=max&&!out.some(x=>x.id===p.id))})).filter(b=>b.players.length);
    if(!available.length)throw Error('候选球员不足');
@@ -101,6 +106,7 @@ export function restoreDraft(raw,data,challenge){
  try{const saved=typeof raw==='string'?JSON.parse(raw):raw;if(saved?.version!==4||saved.date!==challenge.date||saved.key!==challenge.key||!Array.isArray(saved.actions)||saved.actions.length>data.players.length)return draft;
   if(!Number.isSafeInteger(saved.attempt??0)||(saved.attempt??0)<0)throw Error('Invalid attempt');
   draft=createDraft(challenge,saved.attempt??0);
+  const limit=saved.freeRerollLimit??1;if(![1,3].includes(limit))throw Error("Invalid reroll limit");draft={...draft,freeRerollLimit:limit,rerollsLeft:limit};
   draft=configureDraft(draft,{...saved.franchise,starPosition:saved.starPosition});
   for(const action of saved.actions){if(action.type==='pick')draft=pickPlayer(data,challenge,draft,action.id);else if(action.type==='reroll')draft=rerollDraft(data,challenge,draft);else if(action.type==='reward-reroll'&&draft.rerollsLeft===0)draft=rerollDraft(data,challenge,draft,{code:200,data:{rewarded:true}});else throw Error('Invalid action');}
   if(JSON.stringify(draft.picks)!==JSON.stringify(saved.picks)||draft.rerollsLeft!==saved.rerollsLeft)throw Error('Invalid replay');
@@ -125,7 +131,7 @@ export function buildDailyTeams(data,challenge,draft){
  if(draft.picks.length!==10||JSON.stringify(restoreDraft(draft,data,challenge))!==JSON.stringify(draft))throw Error('请完成十轮选秀');
  const players=new Map(data.players.map(p=>[p.id,p]));
  const make=(id,name,ids,color,abbreviation)=>({id,name,abbreviation,fullName:name,color,logo:'',players:ids.map(id=>players.get(id)),startingIds:ids.slice(0,5),rotationIds:ids});
- return {home:make('daily-player',draft.franchise.name,draft.lineup,'#e91850',draft.franchise.abbreviation),away:make('daily-opponent','今日之队',challenge.opponentIds,'#3684ff','今日之队')};
+ return {home:{...make('daily-player',draft.franchise.name,draft.lineup,'#e91850',draft.franchise.abbreviation),logo:draft.franchise.avatar||''},away:make('daily-opponent','今日之队',challenge.opponentIds,'#3684ff','今日之队')};
 }
 export function mergeRecords(first,second,today=dayKey()){
  return {version:1,wins:[...new Set([...cleanRecord(first,today).wins,...cleanRecord(second,today).wins])].sort()};
@@ -137,3 +143,6 @@ export function restartDraft(challenge,draft){
 }
 
 export function draftSlot(draft){return [draft.starPosition,...SLOTS.slice(0,5).filter(s=>s!==draft.starPosition),...SLOTS.slice(5)][draft.picks.length];}
+
+// Same opponent all day; each newly drafted attempt has its own reproducible match.
+export function dailyMatchSeed(challenge,draft){return hash(`daily-match-v2:${challenge.key}:${draft.attempt??0}:${draft.picks.join(',')}`);}
